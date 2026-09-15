@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <title>小吃攤乘法</title>
+<meta name="app-version" content="v4">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17230,7 +17231,7 @@ var ReactDOMClient = require("react-dom/client");
     hue: "#7FC6A4",
     isParent: true
   };
-  const APP_VERSION = "2026-09-15";
+  const APP_VERSION = "v4";
   
   /* ---------- 注音 ---------- */
   const BOPO = {
@@ -17392,7 +17393,14 @@ var ReactDOMClient = require("react-dom/client");
     "表": "ㄅㄧㄠˇ",
     "隨": "ㄙㄨㄟˊ",
     "便": "ㄅㄧㄢˋ",
-    "挑": "ㄊㄧㄠ"
+    "挑": "ㄊㄧㄠ",
+    "複": "ㄈㄨˋ",
+    "接": "ㄐㄧㄝ",
+    "已": "ㄧˇ",
+    "經": "ㄐㄧㄥ",
+    "差": "ㄔㄚˋ",
+    "星": "ㄒㄧㄥ",
+    "剩": "ㄕㄥˋ"
   };
   
   // 「一」的變調：課本會標實際念的調，所以用詞組覆蓋單字
@@ -17597,15 +17605,31 @@ var ReactDOMClient = require("react-dom/client");
   
   /* ---------- 熟練度 ---------- */
   const boxOf = (d, a, b) => d.facts[fk(a, b)]?.box ?? 0;
+  /** 這一段還要再練幾回，九題才會全部亮 */
+  const roundsLeft = (d, seg) => Math.max(1, MASTER_BOX - Math.min(...MULTIPLIERS.map(m => boxOf(d, seg, m))));
   const litCount = (d, seg) => MULTIPLIERS.filter(m => boxOf(d, seg, m) >= MASTER_BOX).length;
   const segDone = (d, seg) => litCount(d, seg) === 9;
   function segUnlocked(d, seg) {
     if (d.unlockAll) return true;
     const i = SEGMENTS.indexOf(seg);
     if (i === 0) return d.beiDone;
-    return litCount(d, SEGMENTS[i - 1]) >= 6;
+    const prev = SEGMENTS[i - 1];
+    if ((d.rounds || {})[prev] >= 1) return true;
+    // 舊版存檔沒有 rounds，用「九題都答過」當作練過一回
+    return MULTIPLIERS.every(m => boxOf(d, prev, m) >= 1);
   }
-  function pickQuestions(d, seg, n = 10) {
+  
+  /** 下一個該練的攤位：已解鎖、還沒九題全亮的第一攤 */
+  function nextSegToDo(d, exclude) {
+    return SEGMENTS.find(s => s !== exclude && segUnlocked(d, s) && !segDone(d, s)) || null;
+  }
+  
+  /**
+   * 一回九題，剛好把這一段 ×1 到 ×9 走過一遍，同一回不會重複。
+   * 出題順序仍照熟練度排：還不熟又到期的先出，沒練過的次之，
+   * 已熟該複習的再次之，還沒到期的最後。
+   */
+  function pickQuestions(d, seg) {
     const now = Date.now();
     const scored = MULTIPLIERS.map(m => {
       const f = d.facts[fk(seg, m)];
@@ -17631,19 +17655,7 @@ var ReactDOMClient = require("react-dom/client");
       };
     });
     scored.sort((x, y) => y.pri - x.pri || x.due - y.due);
-    const out = [];
-    for (let i = 0; out.length < n; i++) out.push(scored[i % 9].m);
-    for (let j = 1; j < out.length; j++) {
-      if (out[j] === out[j - 1]) {
-        const k = out.findIndex((v, idx) => idx > j && v !== out[j]);
-        if (k > -1) {
-          const t = out[j];
-          out[j] = out[k];
-          out[k] = t;
-        }
-      }
-    }
-    return out;
+    return scored.map(x => x.m);
   }
   
   /* ============================================================
@@ -18313,6 +18325,9 @@ var ReactDOMClient = require("react-dom/client");
           textAlign: "center"
         },
         children: "\u7238\u5ABD\u6A21\u5F0F\u5168\u90E8\u89E3\u9396\uFF0C\u53EF\u4EE5\u96A8\u4FBF\u8A66\uFF0C\u4E0D\u6703\u7559\u4E0B\u4EFB\u4F55\u7D00\u9304\u3002"
+      }), _jsx("p", {
+        className: "verTag plainText",
+        children: APP_VERSION
       })]
     });
   }
@@ -18405,6 +18420,7 @@ var ReactDOMClient = require("react-dom/client");
     onParent,
     onSwitch
   }) {
+    const suggested = nextSegToDo(data);
     return _jsxs("div", {
       className: "screen",
       children: [_jsx(Awning, {}), _jsxs("div", {
@@ -18483,11 +18499,21 @@ var ReactDOMClient = require("react-dom/client");
               })
             }), _jsxs("div", {
               className: "segText",
-              children: [_jsx("div", {
+              children: [_jsxs("div", {
                 className: "cardTitle",
-                children: _jsx(Zhu, {
+                children: [_jsx(Zhu, {
                   children: `${cn(seg)} 的乘法`
-                })
+                }), seg === suggested && _jsx("span", {
+                  className: "nextTag",
+                  children: _jsx(Zhu, {
+                    children: "\u63A5\u4E0B\u4F86"
+                  })
+                }), segDone(data, seg) && _jsx("span", {
+                  className: "doneTag",
+                  children: _jsx(Zhu, {
+                    children: "\u719F\u4E86"
+                  })
+                })]
               }), _jsx("div", {
                 className: "cardNote",
                 children: _jsx(Zhu, {
@@ -18501,9 +18527,12 @@ var ReactDOMClient = require("react-dom/client");
               })]
             }), _jsx("div", {
               className: "pips",
-              children: MULTIPLIERS.map(m => _jsx("span", {
-                className: "pip" + (boxOf(data, seg, m) >= MASTER_BOX ? " on" : "")
-              }, m))
+              children: MULTIPLIERS.map(m => {
+                const bx = boxOf(data, seg, m);
+                return _jsx("span", {
+                  className: "pip" + (bx >= MASTER_BOX ? " on" : bx >= 1 ? " half" : "")
+                }, m);
+              })
             })]
           }), open ? _jsxs("div", {
             className: "segBtns",
@@ -18516,7 +18545,16 @@ var ReactDOMClient = require("react-dom/client");
               children: _jsx(Zhu, {
                 children: "\u5148\u770B\u4E00\u904D"
               })
-            }), _jsx("button", {
+            }), segDone(data, seg) ? _jsx("button", {
+              className: "mini",
+              onClick: () => go({
+                name: "practice",
+                seg
+              }),
+              children: _jsx(Zhu, {
+                children: "\u8907\u7FD2"
+              })
+            }) : _jsx("button", {
               className: "mini solid",
               onClick: () => go({
                 name: "practice",
@@ -18526,19 +18564,22 @@ var ReactDOMClient = require("react-dom/client");
                 children: "\u4F86\u7DF4\u7FD2"
               })
             }), _jsxs("span", {
-              className: "tally",
-              children: [litCount(data, seg), "/9"]
+              className: "tally" + (segDone(data, seg) ? " done" : ""),
+              children: ["\u719F ", litCount(data, seg), "/9"]
             })]
           }) : _jsx("div", {
             className: "cardNote locked",
             children: _jsx(Zhu, {
-              children: "\u5148\u628A\u524D\u9762\u90A3\u4E00\u6BB5\u7DF4\u719F\u5C31\u6703\u6253\u958B"
+              children: "\u524D\u9762\u90A3\u4E00\u6BB5\u7DF4\u904E\u4E00\u56DE\u5C31\u6703\u6253\u958B"
             })
           })]
         }, seg);
       }), _jsx("p", {
         className: "foot",
         children: child.isParent ? "爸媽模式：全部解鎖，練習不會存檔也不會寫進 Sheet。二上先練 2、5、4、8。" : "二上先練 2、5、4、8。10、1、0 和乘法的關係，等二下教到再開。"
+      }), _jsx("p", {
+        className: "verTag plainText",
+        children: APP_VERSION
       })]
     });
   }
@@ -18739,9 +18780,10 @@ var ReactDOMClient = require("react-dom/client");
     seg,
     data,
     save,
-    onExit
+    onExit,
+    go
   }) {
-    const [queue] = useState(() => pickQuestions(data, seg, 10));
+    const [queue] = useState(() => pickQuestions(data, seg));
     const [idx, setIdx] = useState(0);
     const [input, setInput] = useState("");
     const [tries, setTries] = useState(0);
@@ -18756,6 +18798,7 @@ var ReactDOMClient = require("react-dom/client");
     const m = queue[idx];
     const ans = seg * m;
     const finished = idx >= queue.length;
+    const nextSeg = nextSegToDo(data, seg);
     useEffect(() => {
       if (!finished) {
         setInput("");
@@ -18827,6 +18870,15 @@ var ReactDOMClient = require("react-dom/client");
       // 一回結束才送一次，整批上傳；失敗留待下次補送
       if (!synced.current) {
         synced.current = true;
+        // 記下這一段練過幾回；解鎖看的是「練過」，不是「全對」
+        const rounds = {
+          ...(data.rounds || {})
+        };
+        rounds[seg] = (rounds[seg] || 0) + 1;
+        save({
+          ...data,
+          rounds
+        });
         const rows = sessionRows.current.map(r => ({
           ...r,
           rights,
@@ -18869,23 +18921,57 @@ var ReactDOMClient = require("react-dom/client");
           })
         }), _jsx("div", {
           className: "pipsBig",
-          children: MULTIPLIERS.map(mm => _jsxs("div", {
-            className: "pipCard" + (boxOf(data, seg, mm) >= MASTER_BOX ? " on" : ""),
-            children: [_jsxs("span", {
-              children: [seg, "\xD7", mm]
-            }), _jsx("strong", {
-              children: seg * mm
-            })]
-          }, mm))
-        }), _jsx("button", {
-          className: "big solid",
-          onClick: onExit,
-          children: _jsx(Zhu, {
-            children: "\u56DE\u6524\u5B50"
+          children: MULTIPLIERS.map(mm => {
+            const bx = boxOf(data, seg, mm);
+            return _jsxs("div", {
+              className: "pipCard" + (bx >= MASTER_BOX ? " on" : bx >= 1 ? " half" : ""),
+              children: [_jsxs("span", {
+                children: [seg, "\xD7", mm]
+              }), _jsx("strong", {
+                children: seg * mm
+              })]
+            }, mm);
           })
         }), _jsx("p", {
-          className: "foot",
-          children: "\u4E00\u5929\u7DF4\u4E00\u56DE\u5C31\u597D\uFF0C\u660E\u5929\u518D\u4F86\u3002"
+          className: "say small",
+          children: _jsx(Zhu, {
+            children: (() => {
+              const lit = litCount(data, seg);
+              if (lit === 9) return `${cn(seg)} 的乘法九題全都熟了。`;
+              return `已經熟了 ${lit} 題。再練 ${roundsLeft(data, seg)} 回，這一段就會全部亮起來。`;
+            })()
+          })
+        }), segDone(data, seg) && nextSeg ? _jsxs(_Fragment, {
+          children: [_jsx("button", {
+            className: "big solid",
+            onClick: () => go({
+              name: "practice",
+              seg: nextSeg
+            }),
+            children: _jsx(Zhu, {
+              children: `去練 ${cn(nextSeg)} 的乘法`
+            })
+          }), _jsx("button", {
+            className: "big",
+            onClick: onExit,
+            children: _jsx(Zhu, {
+              children: "\u56DE\u6524\u5B50"
+            })
+          }), _jsx("p", {
+            className: "foot",
+            children: "\u9019\u4E00\u6524\u5DF2\u7D93\u719F\u4E86\uFF0C\u63DB\u4E00\u6524\u6703\u6BD4\u4E00\u76F4\u7DF4\u540C\u4E00\u6BB5\u6709\u7528\u3002\u60F3\u518D\u8907\u7FD2\u96A8\u6642\u53EF\u4EE5\u56DE\u4F86\u3002"
+          })]
+        }) : _jsxs(_Fragment, {
+          children: [_jsx("button", {
+            className: "big solid",
+            onClick: onExit,
+            children: _jsx(Zhu, {
+              children: "\u56DE\u6524\u5B50"
+            })
+          }), _jsx("p", {
+            className: "foot",
+            children: segDone(data, seg) ? "四攤都熟了，集點卡蓋滿了。之後隔幾天回來複習就好。" : "格子亮一半表示練過了，全亮表示已經熟了。下一攤現在就打開了，想換換口味隨時可以去。"
+          })]
         })]
       });
     }
@@ -18911,6 +18997,14 @@ var ReactDOMClient = require("react-dom/client");
           className: "ghost count",
           children: [idx + 1, "/", queue.length]
         })]
+      }), _jsx("div", {
+        className: "segTrack",
+        children: MULTIPLIERS.map(mm => {
+          const bx = boxOf(data, seg, mm);
+          return _jsx("span", {
+            className: "trackDot" + (bx >= MASTER_BOX ? " on" : bx >= 1 ? " half" : "") + (mm === m ? " now" : "")
+          }, mm);
+        })
       }), _jsx("div", {
         className: "stage quiet",
         children: _jsx(Counter, {
@@ -18942,7 +19036,25 @@ var ReactDOMClient = require("react-dom/client");
         onSubmit: submit
       }) : _jsxs("div", {
         className: "afterRow",
-        children: [_jsxs("button", {
+        children: [_jsxs("div", {
+          className: "mastery",
+          children: [_jsx("div", {
+            className: "mDots",
+            children: [0, 1, 2].map(i => _jsx("span", {
+              className: "mDot" + (boxOf(data, seg, m) > i ? " on" : "")
+            }, i))
+          }), _jsx("span", {
+            className: "mText",
+            children: _jsx(Zhu, {
+              children: (() => {
+                const bx = boxOf(data, seg, m);
+                if (bx > MASTER_BOX) return "這一題已經很熟了";
+                if (bx >= MASTER_BOX) return "這一題亮了";
+                return `這一題再對 ${MASTER_BOX - bx} 次就亮`;
+              })()
+            })
+          })]
+        }), _jsxs("button", {
           className: "chant",
           onClick: () => speak(chant(seg, m)),
           children: [_jsx(Zhu, {
@@ -19240,17 +19352,19 @@ var ReactDOMClient = require("react-dom/client");
           name: "practice",
           seg: view.seg
         })
-      });
+      }, `l${view.seg}`);
     } else if (view.name === "practice") {
+      // key 讓換攤時整個重新開始，不會沿用上一攤的題目與計分
       body = _jsx(Practice, {
         child: child,
         seg: view.seg,
         data: data,
         save: save,
+        go: setView,
         onExit: () => setView({
           name: "home"
         })
-      });
+      }, `p${view.seg}`);
     } else if (view.name === "all") {
       body = _jsx(AllQuestions, {
         onBack: () => setView({
@@ -19371,10 +19485,17 @@ var ReactDOMClient = require("react-dom/client");
   .cardNote.locked { margin-top:10px; }
   .segHead { display:flex; align-items:center; gap:12px; }
   .segBtns { display:flex; align-items:center; gap:10px; margin-top:12px; }
+  .tally.done { color:var(--bulb); }
+  .nextTag { display:inline-block; margin-left:8px; padding:2px 8px; border-radius:8px;
+    background:var(--lantern); font-size:11px; font-weight:700; vertical-align:middle; }
+  .doneTag { display:inline-block; margin-left:8px; padding:2px 8px; border-radius:8px;
+    background:var(--bulb); color:var(--board); font-size:11px; font-weight:700; vertical-align:middle; }
+  .nextTag .bopo, .doneTag .bopo { display:none; }
   .tally { margin-left:auto; color:var(--jade); font-family:'Baloo 2',sans-serif; font-size:16px; }
   
   .pips { display:flex; gap:4px; }
   .pip { width:9px; height:9px; border-radius:50%; background:rgba(251,246,233,.2); }
+  .pip.half { background:rgba(245,185,59,.45); }
   .pip.on { background:var(--bulb); }
   
   .mini { background:none; border:2px solid rgba(251,246,233,.3); border-radius:12px;
@@ -19425,12 +19546,25 @@ var ReactDOMClient = require("react-dom/client");
   .padKey.go .bopo { color:rgba(251,246,233,.75); }
   .padKey:disabled { opacity:.35; cursor:default; }
   
+  .segTrack { display:flex; gap:6px; justify-content:center; margin:0 0 12px; }
+  .trackDot { width:14px; height:14px; border-radius:50%; background:rgba(251,246,233,.18); }
+  .trackDot.half { background:rgba(245,185,59,.5); }
+  .trackDot.on { background:var(--bulb); }
+  .trackDot.now { box-shadow:0 0 0 3px rgba(232,80,46,.85); }
+  
+  .mastery { display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .mDots { display:flex; gap:7px; }
+  .mDot { width:18px; height:18px; border-radius:50%; border:2px solid rgba(245,185,59,.5); }
+  .mDot.on { background:var(--bulb); border-color:var(--bulb); }
+  .mText { font-size:15px; line-height:1.9; color:var(--jade); }
+  
   .afterRow { display:flex; flex-direction:column; align-items:center; gap:14px; margin-top:14px; }
   .pipsBig { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:100%; margin:14px 0; }
   .pipCard { background:var(--board2); border-radius:12px; padding:10px 6px; text-align:center;
     display:flex; flex-direction:column; gap:2px; font-size:13px; color:var(--jade);
     font-family:'Baloo 2',sans-serif; }
   .pipCard strong { font-size:22px; color:var(--chalk); }
+  .pipCard.half { background:rgba(245,185,59,.22); border:2px solid rgba(245,185,59,.45); }
   .pipCard.on { background:var(--bulb); color:rgba(31,74,66,.7); }
   .pipCard.on strong { color:var(--board); }
   
@@ -19463,6 +19597,8 @@ var ReactDOMClient = require("react-dom/client");
     color:var(--chalk); font-family:'Baloo 2',sans-serif; font-size:24px; text-align:center;
     padding:12px; width:140px; }
   
+  .verTag { text-align:center; color:rgba(127,198,164,.45); font-size:12px;
+    font-family:'Baloo 2',sans-serif; margin:18px 0 0; letter-spacing:.06em; }
   .foot { color:var(--jade); font-size:13px; line-height:1.8; margin-top:22px; }
   
   /* 慶祝畫面 */
