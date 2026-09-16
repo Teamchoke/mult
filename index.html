@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <title>小吃攤乘法</title>
-<meta name="app-version" content="v4">
+<meta name="app-version" content="v6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17210,8 +17210,20 @@ var ReactDOMClient = require("react-dom/client");
      孩子畫面全部加注音；家長頁維持純中文。
      ============================================================ */
   
-  const SEGMENTS = [2, 5, 4, 8];
+  const SEGMENTS = [2, 5, 4, 8, 3, 6, 9, 7, 10, 1, 0];
   const MULTIPLIERS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  
+  // 康軒的單元順序，首頁照這個分組
+  const UNITS = [{
+    label: "二上　第七單元",
+    segs: [2, 5, 4, 8]
+  }, {
+    label: "二上　第九單元",
+    segs: [3, 6, 9, 7]
+  }, {
+    label: "二下　第五單元",
+    segs: [10, 1, 0]
+  }];
   const MASTER_BOX = 3;
   const INTERVALS = [0, 10 * 60e3, 864e5, 3 * 864e5, 7 * 864e5, 14 * 864e5];
   const CHILDREN = [{
@@ -17231,7 +17243,7 @@ var ReactDOMClient = require("react-dom/client");
     hue: "#7FC6A4",
     isParent: true
   };
-  const APP_VERSION = "v4";
+  const APP_VERSION = "v6";
   
   /* ---------- 注音 ---------- */
   const BOPO = {
@@ -17400,7 +17412,30 @@ var ReactDOMClient = require("react-dom/client");
     "經": "ㄐㄧㄥ",
     "差": "ㄔㄚˋ",
     "星": "ㄒㄧㄥ",
-    "剩": "ㄕㄥˋ"
+    "剩": "ㄕㄥˋ",
+    // 二上第九單元、二下第五單元的小吃與單元名稱
+    "車": "ㄔㄜ",
+    "輪": "ㄌㄨㄣˊ",
+    "魚": "ㄩˊ",
+    "燒": "ㄕㄠ",
+    "麻": "ㄇㄚˊ",
+    "糬": "ㄕㄨˇ",
+    "鹹": "ㄒㄧㄢˊ",
+    "酥": "ㄙㄨ",
+    "水": "ㄕㄨㄟˇ",
+    "排": "ㄆㄞˊ",
+    "空": "ㄎㄨㄥ",
+    "包": "ㄅㄠ",
+    "支": "ㄓ",
+    "得": "ㄉㄜˊ",
+    "零": "ㄌㄧㄥˊ",
+    "第": "ㄉㄧˋ",
+    "單": "ㄉㄢ",
+    "元": "ㄩㄢˊ",
+    "課": "ㄎㄜˋ",
+    "順": "ㄕㄨㄣˋ",
+    "序": "ㄒㄩˋ",
+    "都": "ㄉㄡ"
   };
   
   // 「一」的變調：課本會標實際念的調，所以用詞組覆蓋單字
@@ -17474,6 +17509,8 @@ var ReactDOMClient = require("react-dom/client");
   // 台灣口訣：積為 10 念「一十」，例如 二五一十
   function chant(a, b) {
     const p = a * b;
+    if (a === 10) return `${cn(b)}個十是${cn(p)}`; // 10 的乘法課本不用口訣，用「幾個十」
+    if (a <= 1) return cn(a) + cn(b) + "得" + cn(p); // 零三得零、一三得三
     return cn(a) + cn(b) + (p === 10 ? "一十" : cn(p));
   }
   
@@ -17609,14 +17646,14 @@ var ReactDOMClient = require("react-dom/client");
   const roundsLeft = (d, seg) => Math.max(1, MASTER_BOX - Math.min(...MULTIPLIERS.map(m => boxOf(d, seg, m))));
   const litCount = (d, seg) => MULTIPLIERS.filter(m => boxOf(d, seg, m) >= MASTER_BOX).length;
   const segDone = (d, seg) => litCount(d, seg) === 9;
-  function segUnlocked(d, seg) {
-    if (d.unlockAll) return true;
-    const i = SEGMENTS.indexOf(seg);
-    if (i === 0) return d.beiDone;
-    const prev = SEGMENTS[i - 1];
-    if ((d.rounds || {})[prev] >= 1) return true;
-    // 舊版存檔沒有 rounds，用「九題都答過」當作練過一回
-    return MULTIPLIERS.every(m => boxOf(d, prev, m) >= 1);
+  
+  /**
+   * 四攤全部開放。孩子會在不同裝置上玩，進度不會跟著走，
+   * 上鎖只會讓他們每換一台就得重解一次。
+   * 建議的順序改用首頁的「接下來」標記引導，不擋人。
+   */
+  function segUnlocked() {
+    return true;
   }
   
   /** 下一個該練的攤位：已解鎖、還沒九題全亮的第一攤 */
@@ -17702,6 +17739,76 @@ var ReactDOMClient = require("react-dom/client");
       cols: 4,
       skin: "#F0C86B",
       deep: "#CE9A38"
+    },
+    3: {
+      name: "車輪餅",
+      unit: "盒",
+      piece: "個",
+      of: "",
+      shape: "wheel",
+      cols: 3,
+      skin: "#D9A24B",
+      deep: "#B87B34"
+    },
+    6: {
+      name: "章魚燒",
+      unit: "盒",
+      piece: "顆",
+      of: "",
+      shape: "tako",
+      cols: 3,
+      skin: "#C97B3F",
+      deep: "#8E4F22"
+    },
+    9: {
+      name: "麻糬",
+      unit: "盒",
+      piece: "個",
+      of: "",
+      shape: "mochi",
+      cols: 3,
+      skin: "#F2E4D0",
+      deep: "#CBB79C"
+    },
+    7: {
+      name: "鹹酥雞",
+      unit: "包",
+      piece: "塊",
+      of: "",
+      shape: "kara",
+      cols: 4,
+      skin: "#DCA354",
+      deep: "#A9702C"
+    },
+    10: {
+      name: "水餃",
+      unit: "盤",
+      piece: "顆",
+      of: "",
+      shape: "jiaozi",
+      cols: 5,
+      skin: "#EFE2C8",
+      deep: "#C4AE86"
+    },
+    1: {
+      name: "雞排",
+      unit: "份",
+      piece: "塊",
+      of: "",
+      shape: "cutlet",
+      cols: 1,
+      skin: "#D79A4A",
+      deep: "#A56A25"
+    },
+    0: {
+      name: "賣完了",
+      unit: "盤",
+      piece: "個",
+      of: "",
+      shape: "none",
+      cols: 1,
+      skin: "#2B5F54",
+      deep: "#2B5F54"
     }
   };
   function Piece({
@@ -17713,7 +17820,7 @@ var ReactDOMClient = require("react-dom/client");
     deep
   }) {
     if (shape === "ball")
-      // 牛肉丸：圓丸，底部略深
+      // 牛肉丸
       return _jsxs("g", {
         children: [_jsx("circle", {
           cx: cx,
@@ -17735,7 +17842,7 @@ var ReactDOMClient = require("react-dom/client");
         })]
       });
     if (shape === "tofu")
-      // 臭豆腐：炸過的方塊，中間切一刀夾泡菜
+      // 臭豆腐：方塊，中間切一刀
       return _jsxs("g", {
         children: [_jsx("rect", {
           x: cx - r,
@@ -17757,16 +17864,10 @@ var ReactDOMClient = require("react-dom/client");
           strokeWidth: r * 0.3,
           strokeLinecap: "round",
           opacity: ".8"
-        }), _jsx("path", {
-          d: `M${cx - r * 0.55} ${cy - r * 0.5}h${r * 0.4}M${cx + r * 0.15} ${cy + r * 0.45}h${r * 0.4}`,
-          stroke: deep,
-          strokeWidth: r * 0.14,
-          strokeLinecap: "round",
-          opacity: ".45"
         })]
       });
     if (shape === "hulu")
-      // 糖葫蘆：糖衣反光的紅果子
+      // 糖葫蘆
       return _jsxs("g", {
         children: [_jsx("circle", {
           cx: cx,
@@ -17787,8 +17888,139 @@ var ReactDOMClient = require("react-dom/client");
           transform: `rotate(-30 ${cx - r * 0.32} ${cy - r * 0.38})`
         })]
       });
+    if (shape === "wheel")
+      // 車輪餅：圓餅，一圈烙痕
+      return _jsxs("g", {
+        children: [_jsx("circle", {
+          cx: cx,
+          cy: cy,
+          r: r,
+          fill: skin
+        }), _jsx("circle", {
+          cx: cx,
+          cy: cy,
+          r: r * 0.62,
+          fill: "none",
+          stroke: deep,
+          strokeWidth: r * 0.18,
+          opacity: ".7"
+        }), _jsx("circle", {
+          cx: cx - r * 0.35,
+          cy: cy - r * 0.35,
+          r: r * 0.16,
+          fill: "#FBF6E9",
+          opacity: ".45"
+        })]
+      });
+    if (shape === "tako")
+      // 章魚燒：醬汁與柴魚片
+      return _jsxs("g", {
+        children: [_jsx("circle", {
+          cx: cx,
+          cy: cy,
+          r: r,
+          fill: skin
+        }), _jsx("path", {
+          d: `M${cx - r * 0.8} ${cy - r * 0.3}q${r * 0.4} ${r * 0.35} ${r * 0.8} 0q${r * 0.4} ${-r * 0.35} ${r * 0.8} 0`,
+          fill: "none",
+          stroke: deep,
+          strokeWidth: r * 0.26,
+          strokeLinecap: "round"
+        }), _jsx("path", {
+          d: `M${cx - r * 0.45} ${cy + r * 0.35}h${r * 0.9}`,
+          stroke: "#FBF6E9",
+          strokeWidth: r * 0.14,
+          strokeLinecap: "round",
+          opacity: ".7"
+        })]
+      });
+    if (shape === "mochi")
+      // 麻糬：軟圓白糰，撒粉
+      return _jsxs("g", {
+        children: [_jsx("ellipse", {
+          cx: cx,
+          cy: cy,
+          rx: r,
+          ry: r * 0.86,
+          fill: skin
+        }), _jsx("ellipse", {
+          cx: cx,
+          cy: cy,
+          rx: r,
+          ry: r * 0.86,
+          fill: "none",
+          stroke: deep,
+          strokeWidth: r * 0.13
+        }), _jsx("circle", {
+          cx: cx - r * 0.3,
+          cy: cy - r * 0.25,
+          r: r * 0.1,
+          fill: deep,
+          opacity: ".5"
+        }), _jsx("circle", {
+          cx: cx + r * 0.25,
+          cy: cy + r * 0.2,
+          r: r * 0.08,
+          fill: deep,
+          opacity: ".5"
+        })]
+      });
+    if (shape === "kara")
+      // 鹹酥雞：不規則酥塊
+      return _jsxs("g", {
+        children: [_jsx("path", {
+          d: `M${cx - r} ${cy - r * 0.3}l${r * 0.5} ${-r * 0.6}l${r * 0.8} ${r * 0.15}l${r * 0.7} ${r * 0.5}
+                    l${-r * 0.25} ${r * 0.9}l${-r * 0.9} ${r * 0.35}l${-r * 0.75} ${-r * 0.4}z`,
+          fill: skin
+        }), _jsx("circle", {
+          cx: cx - r * 0.2,
+          cy: cy,
+          r: r * 0.16,
+          fill: deep,
+          opacity: ".55"
+        }), _jsx("circle", {
+          cx: cx + r * 0.35,
+          cy: cy + r * 0.3,
+          r: r * 0.12,
+          fill: deep,
+          opacity: ".5"
+        })]
+      });
+    if (shape === "jiaozi")
+      // 水餃：半月形，上緣三道摺
+      return _jsxs("g", {
+        children: [_jsx("path", {
+          d: `M${cx - r} ${cy + r * 0.4}a${r} ${r * 0.95} 0 0 1 ${r * 2} 0z`,
+          fill: deep
+        }), _jsx("path", {
+          d: `M${cx - r} ${cy + r * 0.25}a${r} ${r} 0 0 1 ${r * 2} 0z`,
+          fill: skin
+        }), _jsx("path", {
+          d: `M${cx - r * 0.45} ${cy + r * 0.25}v${-r * 0.45}M${cx} ${cy + r * 0.25}v${-r * 0.58}M${cx + r * 0.45} ${cy + r * 0.25}v${-r * 0.45}`,
+          stroke: deep,
+          strokeWidth: r * 0.15,
+          strokeLinecap: "round",
+          opacity: ".65"
+        })]
+      });
+    if (shape === "cutlet")
+      // 雞排：一大塊
+      return _jsxs("g", {
+        children: [_jsx("path", {
+          d: `M${cx - r * 1.5} ${cy - r * 0.9}q${r * 1.5} ${-r * 0.45} ${r * 3} 0
+                    q${r * 0.3} ${r * 0.9} 0 ${r * 1.8}q${-r * 1.5} ${r * 0.45} ${-r * 3} 0
+                    q${-r * 0.3} ${-r * 0.9} 0 ${-r * 1.8}z`,
+          fill: skin
+        }), _jsx("path", {
+          d: `M${cx - r * 0.9} ${cy - r * 0.2}h${r * 1.8}M${cx - r * 0.7} ${cy + r * 0.4}h${r * 1.4}`,
+          stroke: deep,
+          strokeWidth: r * 0.18,
+          strokeLinecap: "round",
+          opacity: ".55"
+        })]
+      });
     return (
-      // 雞蛋糕：小圓蛋糕，底部略深
+      // egg：雞蛋糕
       _jsxs("g", {
         children: [_jsx("circle", {
           cx: cx,
@@ -17819,8 +18051,8 @@ var ReactDOMClient = require("react-dom/client");
     const s = SNACKS[seg];
     const r = compact ? 7 : 11;
     const g = compact ? 4 : 5;
-    const cols = Math.min(s.cols, seg);
-    const rows = Math.ceil(seg / cols);
+    const cols = Math.max(1, Math.min(s.cols, seg || 1));
+    const rows = Math.max(1, Math.ceil(seg / cols));
     const pad = compact ? 7 : 10;
     const w = cols * 2 * r + (cols - 1) * g + pad * 2;
     const h = rows * 2 * r + (rows - 1) * g + pad * 2;
@@ -17887,6 +18119,30 @@ var ReactDOMClient = require("react-dom/client");
           strokeWidth: "2",
           opacity: ".5"
         })]
+      }), (s.unit === "盒" || s.unit === "包" || s.unit === "份") && _jsxs("g", {
+        children: [_jsx("rect", {
+          x: "1",
+          y: pad * 0.35,
+          width: w - 2,
+          height: h - pad * 0.35,
+          rx: "5",
+          fill: "#FBF6E9",
+          opacity: ".14"
+        }), _jsx("rect", {
+          x: "1",
+          y: pad * 0.35,
+          width: w - 2,
+          height: h - pad * 0.35,
+          rx: "5",
+          fill: "none",
+          stroke: "#C08B4F",
+          strokeWidth: "2.5"
+        }), s.unit !== "盒" && _jsx("path", {
+          d: `M1 ${pad * 1.3}h${w - 2}`,
+          stroke: "#C08B4F",
+          strokeWidth: "1.6",
+          opacity: ".6"
+        })]
       }), s.unit === "袋" && _jsxs("g", {
         children: [_jsx("path", {
           d: `M3 ${pad * 0.9} L${w - 3} ${pad * 0.9} L${w - 6} ${h} L6 ${h} Z`,
@@ -17912,6 +18168,18 @@ var ReactDOMClient = require("react-dom/client");
         stroke: "#C08B4F",
         strokeWidth: "3",
         strokeLinecap: "round"
+      }), seg === 0 && _jsx("g", {
+        children: _jsx("line", {
+          x1: w * 0.3,
+          y1: h * 0.45,
+          x2: w * 0.7,
+          y2: h * 0.45,
+          stroke: "#FBF6E9",
+          strokeWidth: "2.5",
+          strokeLinecap: "round",
+          strokeDasharray: "4 4",
+          opacity: ".45"
+        })
       }), Array.from({
         length: seg
       }).map((_, i) => {
@@ -18484,99 +18752,99 @@ var ReactDOMClient = require("react-dom/client");
             children: data.beiDone ? "再看一次" : "從這裡開始"
           })
         })]
-      }), SEGMENTS.map(seg => {
-        const open = segUnlocked(data, seg);
-        const sn = SNACKS[seg];
-        return _jsxs("div", {
-          className: "card seg" + (open ? "" : " locked"),
-          children: [_jsxs("div", {
-            className: "segHead",
-            children: [_jsx("div", {
-              className: "segSign",
-              children: _jsx(Serving, {
-                seg: seg,
-                compact: true
-              })
-            }), _jsxs("div", {
-              className: "segText",
-              children: [_jsxs("div", {
-                className: "cardTitle",
-                children: [_jsx(Zhu, {
-                  children: `${cn(seg)} 的乘法`
-                }), seg === suggested && _jsx("span", {
-                  className: "nextTag",
+      }), UNITS.map(unit => _jsxs("div", {
+        className: "unitBlock",
+        children: [_jsx("div", {
+          className: "unitLabel plainText",
+          children: unit.label
+        }), unit.segs.map(seg => {
+          const sn = SNACKS[seg];
+          return _jsxs("div", {
+            className: "card seg",
+            children: [_jsxs("div", {
+              className: "segHead",
+              children: [_jsx("div", {
+                className: "segSign",
+                children: _jsx(Serving, {
+                  seg: seg,
+                  compact: true
+                })
+              }), _jsxs("div", {
+                className: "segText",
+                children: [_jsxs("div", {
+                  className: "cardTitle",
+                  children: [_jsx(Zhu, {
+                    children: `${cn(seg)} 的乘法`
+                  }), seg === suggested && _jsx("span", {
+                    className: "nextTag",
+                    children: _jsx(Zhu, {
+                      children: "\u63A5\u4E0B\u4F86"
+                    })
+                  }), segDone(data, seg) && _jsx("span", {
+                    className: "doneTag",
+                    children: _jsx(Zhu, {
+                      children: "\u719F\u4E86"
+                    })
+                  })]
+                }), _jsx("div", {
+                  className: "cardNote",
                   children: _jsx(Zhu, {
-                    children: "\u63A5\u4E0B\u4F86"
+                    children: sn.name
                   })
-                }), segDone(data, seg) && _jsx("span", {
-                  className: "doneTag",
+                }), _jsx("div", {
+                  className: "cardNote",
                   children: _jsx(Zhu, {
-                    children: "\u719F\u4E86"
+                    children: `一${sn.unit} ${seg} ${sn.piece}${sn.of}`
                   })
                 })]
               }), _jsx("div", {
-                className: "cardNote",
-                children: _jsx(Zhu, {
-                  children: sn.name
-                })
-              }), _jsx("div", {
-                className: "cardNote",
-                children: _jsx(Zhu, {
-                  children: `一${sn.unit} ${seg} ${sn.piece}${sn.of}`
+                className: "pips",
+                children: MULTIPLIERS.map(m => {
+                  const bx = boxOf(data, seg, m);
+                  return _jsx("span", {
+                    className: "pip" + (bx >= MASTER_BOX ? " on" : bx >= 1 ? " half" : "")
+                  }, m);
                 })
               })]
-            }), _jsx("div", {
-              className: "pips",
-              children: MULTIPLIERS.map(m => {
-                const bx = boxOf(data, seg, m);
-                return _jsx("span", {
-                  className: "pip" + (bx >= MASTER_BOX ? " on" : bx >= 1 ? " half" : "")
-                }, m);
-              })
+            }), _jsxs("div", {
+              className: "segBtns",
+              children: [_jsx("button", {
+                className: "mini",
+                onClick: () => go({
+                  name: "learn",
+                  seg
+                }),
+                children: _jsx(Zhu, {
+                  children: "\u5148\u770B\u4E00\u904D"
+                })
+              }), segDone(data, seg) ? _jsx("button", {
+                className: "mini",
+                onClick: () => go({
+                  name: "practice",
+                  seg
+                }),
+                children: _jsx(Zhu, {
+                  children: "\u8907\u7FD2"
+                })
+              }) : _jsx("button", {
+                className: "mini solid",
+                onClick: () => go({
+                  name: "practice",
+                  seg
+                }),
+                children: _jsx(Zhu, {
+                  children: "\u4F86\u7DF4\u7FD2"
+                })
+              }), _jsxs("span", {
+                className: "tally" + (segDone(data, seg) ? " done" : ""),
+                children: ["\u719F ", litCount(data, seg), "/9"]
+              })]
             })]
-          }), open ? _jsxs("div", {
-            className: "segBtns",
-            children: [_jsx("button", {
-              className: "mini",
-              onClick: () => go({
-                name: "learn",
-                seg
-              }),
-              children: _jsx(Zhu, {
-                children: "\u5148\u770B\u4E00\u904D"
-              })
-            }), segDone(data, seg) ? _jsx("button", {
-              className: "mini",
-              onClick: () => go({
-                name: "practice",
-                seg
-              }),
-              children: _jsx(Zhu, {
-                children: "\u8907\u7FD2"
-              })
-            }) : _jsx("button", {
-              className: "mini solid",
-              onClick: () => go({
-                name: "practice",
-                seg
-              }),
-              children: _jsx(Zhu, {
-                children: "\u4F86\u7DF4\u7FD2"
-              })
-            }), _jsxs("span", {
-              className: "tally" + (segDone(data, seg) ? " done" : ""),
-              children: ["\u719F ", litCount(data, seg), "/9"]
-            })]
-          }) : _jsx("div", {
-            className: "cardNote locked",
-            children: _jsx(Zhu, {
-              children: "\u524D\u9762\u90A3\u4E00\u6BB5\u7DF4\u904E\u4E00\u56DE\u5C31\u6703\u6253\u958B"
-            })
-          })]
-        }, seg);
-      }), _jsx("p", {
+          }, seg);
+        })]
+      }, unit.label)), _jsx("p", {
         className: "foot",
-        children: child.isParent ? "爸媽模式：全部解鎖，練習不會存檔也不會寫進 Sheet。二上先練 2、5、4、8。" : "二上先練 2、5、4、8。10、1、0 和乘法的關係，等二下教到再開。"
+        children: child.isParent ? "爸媽模式：練習不會存檔也不會寫進 Sheet。" : "全部都開著，想先練哪一攤都可以。標著「接下來」的是課本的順序。"
       }), _jsx("p", {
         className: "verTag plainText",
         children: APP_VERSION
@@ -19175,21 +19443,6 @@ var ReactDOMClient = require("react-dom/client");
             children: [(r.lastMs / 1000).toFixed(1), " \u79D2"]
           })]
         }, "s" + fk(r.s, r.m)))
-      }), _jsx("h3", {
-        className: "h3",
-        children: "\u8A2D\u5B9A"
-      }), _jsxs("label", {
-        className: "switchRow",
-        children: [_jsx("input", {
-          type: "checkbox",
-          checked: !!data.unlockAll,
-          onChange: e => save({
-            ...data,
-            unlockAll: e.target.checked
-          })
-        }), _jsx("span", {
-          children: "\u5168\u90E8\u89E3\u9396\uFF08\u4E0D\u8DDF\u8457\u5B78\u6821\u9032\u5EA6\uFF09"
-        })]
       }), _jsxs("p", {
         className: "foot",
         style: {
@@ -19454,8 +19707,9 @@ var ReactDOMClient = require("react-dom/client");
   .punchLabel { color:#8A5A3B; font-size:13px; font-weight:900; line-height:1.9;
     writing-mode:horizontal-tb; letter-spacing:.08em; }
   .punchLabel .bopo { color:#B08258; }
-  .punchRow { display:flex; gap:8px; margin-left:auto; }
-  .punch { width:32px; height:32px; border-radius:50%; border:2px dashed #C9AE85;
+  .punchRow { display:flex; flex-wrap:wrap; gap:6px; margin-left:auto;
+    max-width:72%; justify-content:flex-end; }
+  .punch { width:26px; height:26px; font-size:13px; border-radius:50%; border:2px dashed #C9AE85;
     display:grid; place-items:center; font-weight:900; font-size:15px; color:#FBF6E9; }
   .punch.on { background:var(--lantern); border:2px solid var(--lantern);
     box-shadow:inset 0 0 0 2px rgba(251,246,233,.5); }
@@ -19476,6 +19730,9 @@ var ReactDOMClient = require("react-dom/client");
   .segSign .serving { max-height:58px; max-width:56px; width:auto; height:auto; }
   .segText { flex:1 1 auto; min-width:0; }
   
+  .unitBlock { margin-bottom:6px; }
+  .unitLabel { font-size:13px; font-weight:700; color:var(--jade); letter-spacing:.06em;
+    margin:18px 0 8px 4px; opacity:.85; }
   .card { display:block; width:100%; text-align:left; background:var(--board2);
     border:none; border-radius:18px; padding:16px; margin-bottom:12px; color:var(--chalk); font-family:inherit; }
   .card.bei { cursor:pointer; border-left:6px solid var(--lantern); }
